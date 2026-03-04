@@ -1,5 +1,13 @@
 # HA_menstrual_gauge
 
+<img width="30%" height="30%" alt="normal card view" src="https://github.com/user-attachments/assets/6fb8fb40-e42b-4243-bd52-3cb5f3d7bf8d" /> <img width="30%" height="30%" alt="click a day to set/delete a cycle start date" src="https://github.com/user-attachments/assets/cadb8113-fabb-4eb6-9611-a1901db311d4" />
+
+
+
+
+
+
+
 Monorepo for a Home Assistant menstruation tracker:
 - `ha-menstruation-gauge` (backend integration)
 - `lovelace-menstruation-gauge-card` (interactive Lovelace card)
@@ -72,8 +80,10 @@ show_editor: true
 ## Disclaimer
 
 This project is for orientation and personal tracking support only.
-The sensor.menstruation_gauge may be used for automation as you see fit. An Automation template (adding item to a shopping list) for an example is found in the ReadMe.md of the lovelace-mentruation-gauge-card folder.
 It is not medical advice and not suitable as a reliable method for contraception or conception planning.
+
+The sensor.menstruation_gauge may be used for automation as you see fit. An Automation template (adding item to a shopping list) for an example is found in the ReadMe.md of the lovelace-mentruation-gauge-card folder.
+
 
 ## AI note
 
