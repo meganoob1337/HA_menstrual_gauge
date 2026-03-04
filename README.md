@@ -1,2 +1,87 @@
 # HA_menstrual_gauge
-A Home Assistant monorepo for a menstruation cycle tracker: backend integration + interactive Lovelace gauge card, with local data storage, cycle-start history editing, forecast attributes, and optional shopping-list automations based on days-until-next-start.
+
+Monorepo for a Home Assistant menstruation tracker:
+- `ha-menstruation-gauge` (backend integration)
+- `lovelace-menstruation-gauge-card` (interactive Lovelace card)
+
+Repository target: `https://github.com/nremey/HA_menstrual_gauge`
+
+## What is included
+
+### 1) Home Assistant integration (`ha-menstruation-gauge`)
+- Stores cycle-start history persistently (local HA storage).
+- Publishes `sensor.menstruation_gauge`.
+- Provides forecast-related attributes (e.g. `days_until_next_start`, predicted start, fertile window).
+- Exposes services:
+  - `menstruation_gauge.add_cycle_start`
+  - `menstruation_gauge.remove_cycle_start`
+  - `menstruation_gauge.set_history`
+  - `menstruation_gauge.set_period_duration`
+
+### 2) Lovelace card (`lovelace-menstruation-gauge-card`)
+- Circular monthly gauge view.
+- Forecast marker (+/-1 day).
+- Fertile-window ring segment.
+- Click-to-edit mini calendar (add/remove cycle start days).
+- Uses the integration sensor and services.
+
+## Quick setup (without HACS)
+
+1. Copy integration folder:
+- From: `ha-menstruation-gauge/custom_components/menstruation_gauge`
+- To: `/config/custom_components/menstruation_gauge`
+
+2. Copy card file:
+- From: `lovelace-menstruation-gauge-card/dist/menstruation-gauge-card.js`
+- To: `/config/www/community/remeys_menstrual_gauge/menstruation-gauge-card.js`
+
+3. Add to `configuration.yaml`:
+
+```yaml
+menstruation_gauge:
+```
+
+4. Restart Home Assistant.
+
+5. Add Lovelace resource:
+
+## How to add Lovelace resource (UI steps)
+
+1. Open Home Assistant.
+2. Go to `Settings` -> `Dashboards`.
+3. Open your target dashboard.
+4. Click `⋮` (top right) -> `Resources`.
+5. Click `+ Add Resource`.
+6. Enter:
+   - URL: `/local/community/remeys_menstrual_gauge/menstruation-gauge-card.js`
+   - Type: `JavaScript Module`
+7. Save and reload browser (hard refresh recommended).
+
+
+
+## Add a custom gauge card this way:
+
+```yaml
+type: custom:menstruation-gauge-card
+entity: sensor.menstruation_gauge
+period_duration_days: 5
+show_editor: true
+```
+
+
+
+## About HACS in a monorepo
+
+This repository is organized as a monorepo.  
+If you want clean HACS auto-install flows for both parts, separate frontend/integration repos are often easier.  
+Manual install from this monorepo works reliably.
+
+## Disclaimer
+
+This project is for orientation and personal tracking support only.  
+It is not medical advice and not suitable as a reliable method for contraception or conception planning.
+
+## AI note
+
+A significant part of this project was created with AI assistance (OpenAI Codex), then reviewed and adjusted manually.  
+It is tested in practical use, but edge cases may still exist.
