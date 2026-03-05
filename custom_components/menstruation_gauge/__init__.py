@@ -167,22 +167,8 @@ async def _save_store(hass: HomeAssistant) -> None:
     await data["store"].async_save(payload)
 
 
-async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
-    """Set up integration from configuration.yaml with `menstruation_gauge:`."""
-    if DOMAIN not in config:
-        return True
-
-    store: Store = Store(hass, STORE_VERSION, STORE_KEY)
-    stored = await store.async_load() or {}
-    history = _dedupe_sort(list(stored.get("history") or []))
-    duration = int(stored.get("period_duration_days") or DEFAULT_PERIOD_DURATION_DAYS)
-
-    hass.data[DATA_KEY] = {
-        "store": store,
-        "history": history,
-        "period_duration_days": max(1, min(14, duration)),
-    }
-
+async def _setup_integration(hass: HomeAssistant) -> None:
+    """Set up the integration services and state."""
     async def _handle_add_cycle_start(call: ServiceCall) -> None:
         iso = _norm_iso(call.data["date"])
         if not iso:
@@ -235,6 +221,25 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     )
 
     await _push_state(hass)
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Set up integration from configuration.yaml with `menstruation_gauge:`."""
+    if DOMAIN not in config:
+        return True
+
+    store: Store = Store(hass, STORE_VERSION, STORE_KEY)
+    stored = await store.async_load() or {}
+    history = _dedupe_sort(list(stored.get("history") or []))
+    duration = int(stored.get("period_duration_days") or DEFAULT_PERIOD_DURATION_DAYS)
+
+    hass.data[DATA_KEY] = {
+        "store": store,
+        "history": history,
+        "period_duration_days": max(1, min(14, duration)),
+    }
+
+    await _setup_integration(hass)
     _LOGGER.info("Menstruation Gauge initialized with %s history points", len(history))
 
     # Serve lovelace card
@@ -259,74 +264,20 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up integration from a config entry."""
-    # Initialize data if not already set up via YAML
-    if DATA_KEY not in hass.data:
-        store: Store = Store(hass, STORE_VERSION, STORE_KEY)
-        stored = await store.async_load() or {}
-        history = _dedupe_sort(list(stored.get("history") or []))
-        duration = int(stored.get("period_duration_days") or DEFAULT_PERIOD_DURATION_DAYS)
+    """Set up Menstruation Gauge from a config entry."""
+    store: Store = Store(hass, STORE_VERSION, STORE_KEY)
+    stored = await store.async_load() or {}
+    history = _dedupe_sort(list(stored.get("history") or []))
+    duration = int(stored.get("period_duration_days") or DEFAULT_PERIOD_DURATION_DAYS)
 
-        hass.data[DATA_KEY] = {
-            "store": store,
-            "history": history,
-            "period_duration_days": max(1, min(14, duration)),
-        }
+    hass.data[DATA_KEY] = {
+        "store": store,
+        "history": history,
+        "period_duration_days": max(1, min(14, duration)),
+    }
 
-        async def _handle_add_cycle_start(call: ServiceCall) -> None:
-            iso = _norm_iso(call.data["date"])
-            if not iso:
-                _LOGGER.warning("Invalid date for add_cycle_start: %s", call.data.get("date"))
-                return
-            items = list(hass.data[DATA_KEY]["history"])
-            items.append(iso)
-            hass.data[DATA_KEY]["history"] = _dedupe_sort(items)
-            await _save_store(hass)
-            await _push_state(hass)
-
-        async def _handle_remove_cycle_start(call: ServiceCall) -> None:
-            iso = _norm_iso(call.data["date"])
-            if not iso:
-                _LOGGER.warning("Invalid date for remove_cycle_start: %s", call.data.get("date"))
-                return
-            items = [d for d in hass.data[DATA_KEY]["history"] if d != iso]
-            hass.data[DATA_KEY]["history"] = _dedupe_sort(items)
-            await _save_store(hass)
-            await _push_state(hass)
-
-        async def _handle_set_history(call: ServiceCall) -> None:
-            hass.data[DATA_KEY]["history"] = _dedupe_sort(call.data["dates"])
-            await _save_store(hass)
-            await _push_state(hass)
-
-        async def _handle_set_period_duration(call: ServiceCall) -> None:
-            hass.data[DATA_KEY]["period_duration_days"] = int(call.data["days"])
-            await _save_store(hass)
-            await _push_state(hass)
-
-        hass.services.async_register(DOMAIN, SERVICE_ADD_CYCLE_START, _handle_add_cycle_start, schema=SERVICE_SCHEMA_DATE)
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_REMOVE_CYCLE_START,
-            _handle_remove_cycle_start,
-            schema=SERVICE_SCHEMA_DATE,
-        )
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_HISTORY,
-            _handle_set_history,
-            schema=SERVICE_SCHEMA_SET_HISTORY,
-        )
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_PERIOD_DURATION,
-            _handle_set_period_duration,
-            schema=SERVICE_SCHEMA_SET_DURATION,
-        )
-
-        await _push_state(hass)
-        history = hass.data[DATA_KEY]["history"]
-        _LOGGER.info("Menstruation Gauge initialized with %s history points", len(history))
+    await _setup_integration(hass)
+    _LOGGER.info("Menstruation Gauge initialized with %s history points", len(history))
 
     # Serve lovelace card
     path = Path(__file__).parent / "www"
@@ -351,4 +302,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    # Unregister services
+    hass.services.async_remove(DOMAIN, SERVICE_ADD_CYCLE_START)
+    hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CYCLE_START)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_HISTORY)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_PERIOD_DURATION)
+    
+    # Remove state
+    hass.states.async_remove(DEFAULT_ENTITY_ID)
+    
+    # Remove data
+    hass.data.pop(DATA_KEY, None)
+    
     return True
