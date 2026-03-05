@@ -294,6 +294,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await utils.init_resource(
             hass, "/menstruationgauge/www/menstruation-gauge-card.js", str(version)
         )
+                # 3. Tell the frontend to load this JS file as a module
+        # This is what "automatically" adds it as a resource
+        if "frontend" in hass.config.components:
+            from homeassistant.components.frontend import add_extra_js_url
+            add_extra_js_url(hass, "/menstruationgauge/www/menstruation-gauge-card.js")
+
     except Exception:
         pass
 
